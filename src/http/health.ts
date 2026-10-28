@@ -38,13 +38,31 @@ export function startHealthServer(discordClient: Client): ReturnType<typeof Bun.
       const url = new URL(req.url);
 
       if (url.pathname === "/health" || url.pathname === "/ready" || url.pathname === "/") {
+        if (req.method !== "GET" && req.method !== "HEAD") {
+          return new Response("Method Not Allowed", {
+            status: 405,
+            headers: { Allow: "GET, HEAD" },
+          });
+        }
+
         const dbOk = await checkDatabaseConnection();
         const wsStatus = discordClient.ws?.status;
-        const discordReady = wsStatus === Status.Ready;
         const discordStatus = getDiscordStatusText(wsStatus);
 
         const isHealthy = dbOk; // DB connectivity is primary health requirement
         const httpStatus = isHealthy ? 200 : 503;
+
+        const headers = {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-store, no-cache, must-revalidate",
+        };
+
+        if (req.method === "HEAD") {
+          return new Response(null, {
+            status: httpStatus,
+            headers,
+          });
+        }
 
         return Response.json(
           {
@@ -58,14 +76,23 @@ export function startHealthServer(discordClient: Client): ReturnType<typeof Bun.
           },
           {
             status: httpStatus,
-            headers: {
-              "Cache-Control": "no-store, no-cache, must-revalidate",
-            },
+            headers,
           }
         );
       }
 
       if (url.pathname === "/ping") {
+        if (req.method !== "GET" && req.method !== "HEAD") {
+          return new Response("Method Not Allowed", {
+            status: 405,
+            headers: { Allow: "GET, HEAD" },
+          });
+        }
+
+        if (req.method === "HEAD") {
+          return new Response(null, { status: 200 });
+        }
+
         return new Response("pong", { status: 200 });
       }
 

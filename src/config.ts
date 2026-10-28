@@ -6,7 +6,7 @@ const configSchema = z.object({
   DISCORD_TOKEN: z.string().min(1, "DISCORD_TOKEN is required"),
   DISCORD_CLIENT_ID: z.string().min(1, "DISCORD_CLIENT_ID is required"),
   DISCORD_GUILD_ID: z.string().optional(),
-  PORT: z.coerce.number().int().positive().default(3000),
+  PORT: z.coerce.number().int().nonnegative().default(3000),
   HOST: z.string().default("0.0.0.0"),
   POLL_INTERVAL_DEFAULT_SECONDS: z.coerce.number().int().min(60).default(600),
   POLL_INTERVAL_MIN_SECONDS: z.coerce.number().int().min(30).default(60),
