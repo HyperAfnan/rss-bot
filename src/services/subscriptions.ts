@@ -1,3 +1,10 @@
+import {
+  type Client,
+  type TextChannel,
+  type NewsChannel,
+  ThreadAutoArchiveDuration,
+  PermissionFlagsBits,
+} from "discord.js";
 import { fetchFeed } from "../rss/fetcher";
 import { parseFeedXml, type ParsedFeed } from "../rss/parser";
 import { upsertGuild } from "../db/repositories/guilds";
@@ -29,10 +36,13 @@ export async function addSubscription(params: {
   channelId: string;
   feedUrl: string;
   pollIntervalSeconds?: number;
+  useThread?: boolean;
+  discordClient?: Client;
 }): Promise<{
   subscription: Subscription;
   feed: ParsedFeed;
   baselineItemCount: number;
+  threadId: string | null;
 }> {
   const config = getConfig();
   const pollInterval = Math.max(
@@ -58,15 +68,59 @@ export async function addSubscription(params: {
   // 4. Ensure guild exists in database
   await upsertGuild(params.guildId, params.guildName);
 
-  // 5. Create subscription record
+  // 5. Create dedicated thread if requested (default: true)
+  let createdThreadId: string | null = null;
+  const useThread = params.useThread ?? true;
+
+  if (useThread && params.discordClient) {
+    try {
+      const channel = await params.discordClient.channels.fetch(params.channelId);
+      if (channel && channel.isTextBased() && "threads" in channel && "guild" in channel) {
+        const textChannel = channel as TextChannel | NewsChannel;
+
+        // Check thread creation permissions
+        const botMember = textChannel.guild.members.me ?? (await textChannel.guild.members.fetchMe());
+        const perms = textChannel.permissionsFor(botMember);
+        if (
+          perms?.has(PermissionFlagsBits.CreatePublicThreads) &&
+          perms?.has(PermissionFlagsBits.SendMessagesInThreads)
+        ) {
+          const safeTitle = parsedFeed.title.replace(/[\n\r]/g, " ").trim();
+          const threadName = `📢 ${safeTitle.length > 95 ? safeTitle.slice(0, 92) + "..." : safeTitle}`;
+
+          const thread = await textChannel.threads.create({
+            name: threadName,
+            autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek,
+            reason: `Dedicated thread for ${parsedFeed.title}`,
+          });
+
+          await thread.send({
+            content: `🧵 **Dedicated Thread for ${parsedFeed.title}**\nAll updates and new articles for this feed will be posted in this thread.\n🔗 **Feed URL:** <${params.feedUrl}>`,
+          });
+
+          createdThreadId = thread.id;
+          console.log(`[Subscription] Created dedicated thread <#${thread.id}> for ${parsedFeed.title}`);
+        } else {
+          console.warn(
+            `[Subscription] Missing thread permissions in #${textChannel.name}. Falling back to parent channel.`
+          );
+        }
+      }
+    } catch (threadErr) {
+      console.error("[Subscription] Failed to create dedicated thread:", threadErr);
+    }
+  }
+
+  // 6. Create subscription record
   const subscription = await createSubscription({
     guildId: params.guildId,
     channelId: params.channelId,
     feedUrl: params.feedUrl,
+    threadId: createdThreadId,
     pollIntervalSeconds: pollInterval,
   });
 
-  // 6. Establish baseline items so old articles are NOT spammed
+  // 7. Establish baseline items so old articles are NOT spammed
   const baselineCount = await recordBaselineItems(
     subscription.id,
     parsedFeed.items.map((item) => ({
@@ -81,7 +135,7 @@ export async function addSubscription(params: {
     `[Subscription] Subscribed #${subscription.id} to ${params.feedUrl}. Established baseline of ${baselineCount} items.`
   );
 
-  // 7. Initialize feed state with Next Check time and caching headers
+  // 8. Initialize feed state with Next Check time and caching headers
   const nextCheckAt = new Date(Date.now() + pollInterval * 1000);
   await upsertFeedState({
     subscriptionId: subscription.id,
@@ -95,6 +149,7 @@ export async function addSubscription(params: {
     subscription,
     feed: parsedFeed,
     baselineItemCount: baselineCount,
+    threadId: createdThreadId,
   };
 }
 

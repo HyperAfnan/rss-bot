@@ -40,6 +40,12 @@ export const rssCommand = new SlashCommandBuilder()
           .setMaxValue(1440)
           .setRequired(false)
       )
+      .addBooleanOption((opt) =>
+        opt
+          .setName("thread")
+          .setDescription("Create a dedicated thread for all updates (default: True)")
+          .setRequired(false)
+      )
   )
   // Subcommand: remove
   .addSubcommand((sub) =>

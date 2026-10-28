@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   guild_id TEXT NOT NULL REFERENCES guilds(id) ON DELETE CASCADE,
   channel_id TEXT NOT NULL,
   feed_url TEXT NOT NULL,
+  thread_id TEXT,
   poll_interval_seconds INTEGER NOT NULL DEFAULT 600,
   enabled BOOLEAN NOT NULL DEFAULT TRUE,
   last_checked_at TIMESTAMPTZ,
@@ -45,5 +46,6 @@ CREATE TABLE IF NOT EXISTS feed_state (
 -- Indexes for efficient polling and lookups
 CREATE INDEX IF NOT EXISTS idx_subscriptions_guild ON subscriptions(guild_id);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_enabled ON subscriptions(enabled);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_thread ON subscriptions(thread_id);
 CREATE INDEX IF NOT EXISTS idx_feed_state_next_check ON feed_state(next_check_at);
 CREATE INDEX IF NOT EXISTS idx_feed_items_subscription_posted ON feed_items(subscription_id, posted_at);

@@ -5,6 +5,7 @@ export interface Subscription {
   guild_id: string;
   channel_id: string;
   feed_url: string;
+  thread_id: string | null;
   poll_interval_seconds: number;
   enabled: boolean;
   last_checked_at: Date | null;
@@ -24,6 +25,7 @@ export async function createSubscription(params: {
   guildId: string;
   channelId: string;
   feedUrl: string;
+  threadId?: string | null;
   pollIntervalSeconds?: number;
 }): Promise<Subscription> {
   const sql = getDb();
@@ -34,6 +36,7 @@ export async function createSubscription(params: {
       guild_id,
       channel_id,
       feed_url,
+      thread_id,
       poll_interval_seconds,
       enabled
     )
@@ -41,6 +44,7 @@ export async function createSubscription(params: {
       ${params.guildId},
       ${params.channelId},
       ${params.feedUrl},
+      ${params.threadId ?? null},
       ${pollInterval},
       true
     )
@@ -125,6 +129,18 @@ export async function updateSubscriptionStatus(
   `;
 }
 
+export async function updateSubscriptionThread(
+  id: number,
+  threadId: string | null
+): Promise<void> {
+  const sql = getDb();
+  await sql`
+    UPDATE subscriptions
+    SET thread_id = ${threadId}
+    WHERE id = ${id}
+  `;
+}
+
 export async function getDueSubscriptions(limit = 10): Promise<DueSubscription[]> {
   const sql = getDb();
   return await sql<DueSubscription[]>`
@@ -133,6 +149,7 @@ export async function getDueSubscriptions(limit = 10): Promise<DueSubscription[]
       s.guild_id,
       s.channel_id,
       s.feed_url,
+      s.thread_id,
       s.poll_interval_seconds,
       s.enabled,
       s.last_checked_at,

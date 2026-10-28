@@ -44,4 +44,63 @@ describe("Publisher & Embed Formatting", () => {
     expect(json.description?.length).toBeLessThanOrEqual(1000);
     expect(json.description?.endsWith("...")).toBe(true);
   });
+
+  it("should unarchive an archived dedicated thread when resolving target destination", async () => {
+    let unarchived = false;
+
+    const mockThread = {
+      id: "thread-123",
+      name: "Cloudflare Updates",
+      isThread: () => true,
+      archived: true,
+      setArchived: async (val: boolean) => {
+        if (!val) unarchived = true;
+      },
+    };
+
+    const mockParentChannel = {
+      id: "parent-chan-1",
+      name: "updates",
+      isTextBased: () => true,
+      guild: {
+        members: {
+          fetchMe: async () => ({
+            id: "bot-1",
+          }),
+        },
+      },
+      permissionsFor: () => ({
+        has: () => true,
+      }),
+    };
+
+    const mockClient = {
+      channels: {
+        fetch: async (id: string) => {
+          if (id === "thread-123") return mockThread;
+          if (id === "parent-chan-1") return mockParentChannel;
+          return null;
+        },
+      },
+    } as any;
+
+    const mockSubscription = {
+      id: 1,
+      guild_id: "guild-1",
+      channel_id: "parent-chan-1",
+      feed_url: "https://blog.cloudflare.com/rss",
+      thread_id: "thread-123",
+      poll_interval_seconds: 600,
+      enabled: true,
+      last_checked_at: null,
+      last_error: null,
+      created_at: new Date(),
+    };
+
+    const { resolveTargetDestination } = await import("../src/services/publisher");
+    const target = await resolveTargetDestination(mockClient, mockSubscription, "Cloudflare Blog");
+
+    expect(target.id).toBe("thread-123");
+    expect(unarchived).toBe(true);
+  });
 });

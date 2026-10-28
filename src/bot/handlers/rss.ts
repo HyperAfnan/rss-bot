@@ -81,6 +81,7 @@ async function handleAdd(interaction: ChatInputCommandInteraction): Promise<void
   const url = interaction.options.getString("url", true).trim();
   const channel = interaction.options.getChannel("channel") ?? interaction.channel;
   const intervalMinutes = interaction.options.getInteger("interval") ?? 10;
+  const useThread = interaction.options.getBoolean("thread") ?? true;
 
   if (!channel || !("isTextBased" in channel) || !channel.isTextBased()) {
     await interaction.editReply({
@@ -112,7 +113,13 @@ async function handleAdd(interaction: ChatInputCommandInteraction): Promise<void
       channelId: channel.id,
       feedUrl: url,
       pollIntervalSeconds: intervalMinutes * 60,
+      useThread,
+      discordClient: interaction.client,
     });
+
+    const destinationField = result.threadId
+      ? { name: "Destination", value: `🧵 <#${result.threadId}> (in <#${channel.id}>)`, inline: true }
+      : { name: "Destination Channel", value: `<#${channel.id}>`, inline: true };
 
     const embed = new EmbedBuilder()
       .setColor(0x57f287) // Green
@@ -120,7 +127,7 @@ async function handleAdd(interaction: ChatInputCommandInteraction): Promise<void
       .setDescription(`Subscribed to **${result.feed.title}**`)
       .addFields(
         { name: "Subscription ID", value: `#${result.subscription.id}`, inline: true },
-        { name: "Channel", value: `<#${channel.id}>`, inline: true },
+        destinationField,
         { name: "Poll Interval", value: `${intervalMinutes} minutes`, inline: true },
         { name: "Feed URL", value: url },
         {
@@ -128,7 +135,11 @@ async function handleAdd(interaction: ChatInputCommandInteraction): Promise<void
           value: `Recorded **${result.baselineItemCount}** existing articles. Historical items will not be posted.`,
         }
       )
-      .setFooter({ text: "New articles will post automatically to this channel." })
+      .setFooter({
+        text: result.threadId
+          ? "All updates will post into the dedicated thread."
+          : "New articles will post automatically to this channel.",
+      })
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });
@@ -188,8 +199,12 @@ async function handleList(interaction: ChatInputCommandInteraction): Promise<voi
         ? `<t:${Math.floor(sub.last_checked_at.getTime() / 1000)}:R>`
         : "Never";
 
+      const destination = sub.thread_id
+        ? `🧵 <#${sub.thread_id}> (Channel: <#${sub.channel_id}>)`
+        : `<#${sub.channel_id}>`;
+
       embed.addFields({
-        name: `#${sub.id} · <#${sub.channel_id}> [${statusIcon}]`,
+        name: `#${sub.id} · ${destination} [${statusIcon}]`,
         value: `**URL:** ${sub.feed_url}\n**Interval:** Every ${intervalMin}m | **Last check:** ${lastCheck}${
           sub.last_error ? `\n**Error:** \`${sub.last_error.slice(0, 100)}\`` : ""
         }`,
@@ -342,9 +357,11 @@ async function handleStatus(interaction: ChatInputCommandInteraction): Promise<v
         : "Pending";
 
       embed.addFields({
-        name: `#${sub.id} · Channel: <#${sub.channel_id}>`,
+        name: `#${sub.id} · ${sub.thread_id ? `Thread: <#${sub.thread_id}>` : `Channel: <#${sub.channel_id}>`}`,
         value: [
           `**State:** ${statusText}`,
+          `**Channel:** <#${sub.channel_id}>`,
+          sub.thread_id ? `**Dedicated Thread:** <#${sub.thread_id}>` : null,
           `**URL:** ${sub.feed_url}`,
           `**Last Success:** ${lastSuccess}`,
           `**Next Check:** ${nextCheck}`,

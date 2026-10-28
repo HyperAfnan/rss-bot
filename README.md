@@ -47,7 +47,7 @@ All commands are grouped under `/rss` and require **Manage Server** (`ManageGuil
 
 | Command | Arguments | Description |
 | :--- | :--- | :--- |
-| `/rss add` | `url` *(req)*, `channel` *(opt)*, `interval` *(opt)* | Subscribe a channel to an RSS/Atom feed. Validates feed, establishes baseline. |
+| `/rss add` | `url` *(req)*, `channel` *(opt)*, `interval` *(opt)*, `thread` *(opt)* | Subscribe to an RSS/Atom feed. Creates a dedicated thread (default: True) and establishes baseline. |
 | `/rss remove` | `id` *(req)* | Remove a subscription and delete its stored items. |
 | `/rss list` | *None* | List all configured feeds, target channels, and statuses for this server. |
 | `/rss test` | `url` *(req)* | Fetch a feed on-demand and preview its latest article embed without subscribing. |
