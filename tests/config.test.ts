@@ -19,6 +19,7 @@ describe("Configuration Loading & Validation", () => {
     expect(config.HOST).toBe("0.0.0.0");
     expect(config.POLL_INTERVAL_DEFAULT_SECONDS).toBe(600);
     expect(config.CONCURRENT_POLL_LIMIT).toBe(5);
+    expect(config.MAX_FEED_SIZE_MB).toBe(15);
     expect(config.DATABASE_URL).toBe(validEnv.DATABASE_URL);
     expect(config.DISCORD_TOKEN).toBe(validEnv.DISCORD_TOKEN);
     expect(config.DISCORD_CLIENT_ID).toBe(validEnv.DISCORD_CLIENT_ID);
@@ -31,10 +32,12 @@ describe("Configuration Loading & Validation", () => {
       DISCORD_CLIENT_ID: "123456789012345678",
       PORT: "8080",
       POLL_INTERVAL_DEFAULT_SECONDS: "300",
+      MAX_FEED_SIZE_MB: "25",
     };
 
     const config = loadConfig(customEnv);
     expect(config.PORT).toBe(8080);
     expect(config.POLL_INTERVAL_DEFAULT_SECONDS).toBe(300);
+    expect(config.MAX_FEED_SIZE_MB).toBe(25);
   });
 });

@@ -12,6 +12,7 @@ const configSchema = z.object({
   POLL_INTERVAL_MIN_SECONDS: z.coerce.number().int().min(30).default(60),
   CONCURRENT_POLL_LIMIT: z.coerce.number().int().positive().default(5),
   FETCH_TIMEOUT_MS: z.coerce.number().int().positive().default(10000),
+  MAX_FEED_SIZE_MB: z.coerce.number().positive().default(15),
   USER_AGENT: z.string().default("RSS-Discord-Bot/1.0 (+https://github.com/)"),
 });
 

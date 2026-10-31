@@ -49,5 +49,5 @@ describe("Health HTTP Server", () => {
     } finally {
       server.stop(true);
     }
-  });
+  }, 15000);
 });

@@ -200,11 +200,47 @@ export async function fetchFeed(
       throw new Error(`HTTP ${response.status} ${response.statusText}`);
     }
 
-    const xml = await response.text();
+    const maxSizeBytes = config.MAX_FEED_SIZE_MB * 1024 * 1024;
 
-    // Guard against excessive size (5MB max)
-    if (xml.length > 5 * 1024 * 1024) {
-      throw new Error("Feed payload exceeds 5MB limit");
+    // Early guard: Check Content-Length header if present
+    const contentLength = response.headers.get("content-length");
+    if (contentLength) {
+      const parsedLength = parseInt(contentLength, 10);
+      if (!isNaN(parsedLength) && parsedLength > maxSizeBytes) {
+        throw new Error(`Feed payload exceeds ${config.MAX_FEED_SIZE_MB}MB limit`);
+      }
+    }
+
+    let xml = "";
+    if (response.body) {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let totalBytes = 0;
+      const chunks: string[] = [];
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        totalBytes += value.byteLength;
+        if (totalBytes > maxSizeBytes) {
+          try {
+            await reader.cancel();
+          } catch {
+            // Ignore cancel error
+          }
+          throw new Error(`Feed payload exceeds ${config.MAX_FEED_SIZE_MB}MB limit`);
+        }
+        chunks.push(decoder.decode(value, { stream: true }));
+      }
+      chunks.push(decoder.decode());
+      xml = chunks.join("");
+    } else {
+      xml = await response.text();
+    }
+
+    // Final guard against excessive decoded character length
+    if (xml.length > maxSizeBytes) {
+      throw new Error(`Feed payload exceeds ${config.MAX_FEED_SIZE_MB}MB limit`);
     }
 
     return {

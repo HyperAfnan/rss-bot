@@ -16,6 +16,20 @@ A reliable, lightweight, self-hosted RSS and Atom Discord bot built with **Bun**
 
 ---
 
+## 📚 Complete Production-Grade Documentation
+
+Comprehensive technical documentation is available in the [`docs/`](./docs) directory:
+
+- 🏛️ **Architecture & Design**: [System Overview](./docs/architecture/overview.md) · [Database Design & Constraints](./docs/architecture/database-design.md) · [Lifecycle & Resilience](./docs/architecture/lifecycle-and-resilience.md)
+- 🔬 **Module Technical References**: [Configuration](./docs/modules/configuration.md) · [Database Layer](./docs/modules/database-layer.md) · [Network & SSRF](./docs/modules/network-and-ssrf.md) · [Feed Parser Engine](./docs/modules/feed-parser.md) · [Polling Engine](./docs/modules/polling-engine.md) · [Publishing Service](./docs/modules/publishing-service.md) · [Subscription Service](./docs/modules/subscription-service.md) · [Discord Bot](./docs/modules/discord-bot.md) · [Health Server](./docs/modules/health-server.md)
+- 📖 **User & Admin Guides**: [Slash Commands Manual](./docs/user-guide/slash-commands.md) · [Discord Setup & Permissions](./docs/user-guide/discord-setup.md) · [Feed Management Best Practices](./docs/user-guide/feed-management.md)
+- 🛠️ **Operations & Runbooks**: [Render Deployment](./docs/operations/deployment-render.md) · [UptimeRobot Monitoring](./docs/operations/monitoring-uptimerobot.md) · [Database Maintenance](./docs/operations/database-maintenance.md) · [Security & Threat Model](./docs/operations/security-and-threat-model.md) · [Troubleshooting Runbook](./docs/operations/troubleshooting.md)
+- 📚 **Reference**: [Standards & Glossary](./docs/reference/glossary.md) · [Testing Guide](./docs/reference/testing-guide.md)
+
+Explore the full documentation portal at **[`docs/README.md`](./docs/README.md)**.
+
+---
+
 ## Architecture
 
 ```text
@@ -90,6 +104,7 @@ DATABASE_URL=postgresql://postgres:[PASSWORD]@[HOST]:[PORT]/postgres
 DISCORD_TOKEN=your_bot_token_here
 DISCORD_CLIENT_ID=your_application_client_id_here
 PORT=3000
+MAX_FEED_SIZE_MB=15
 ```
 
 > **Tip (Development):** Add `DISCORD_GUILD_ID=your_server_id` to `.env` to register slash commands instantly to your test server without waiting for Discord's global command sync.
@@ -185,6 +200,7 @@ Every 5 minutes, UptimeRobot sends a GET request to `/health`. The bot verifies 
 ## Security
 
 - **Server-Side Request Forgery (SSRF) Prevention**: Resolves domain names via DNS and rejects private ranges (e.g. `127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `169.254.0.0/16`, IPv6 ULA/link-local).
+- **Payload Size & Memory Guards**: Protects against denial-of-service and memory exhaustion with configurable payload limits (default: 15MB via `MAX_FEED_SIZE_MB`), upfront `Content-Length` inspection, and streaming byte guards.
 - **Discord Permission Enforcement**: Permissions are validated at the Discord API level with `setDefaultMemberPermissions` and checked at runtime in command execution.
 - **Graceful Shutdown**: Intercepts `SIGINT` and `SIGTERM` signals to cleanly stop the polling queue, drain in-flight web requests, and close database connections without data loss.
 
